@@ -3102,8 +3102,20 @@ AutoJumpResetButton = MiscTab:AddButton({
         if #frictionTables == 0 then
             findFrictionTables()
         end
-
+        
         forceDefaultFriction()
+        
+        frictionTables = {}
+        lastFrictionScanTime = 0
+        
+        if bhopLoaded then
+            unloadBhop()
+            task.delay(0.1, function()
+                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
+                    loadBhop()
+                end
+            end)
+        end
 
         Fluent:Notify({
             Title = "Auto Jump",
@@ -3123,8 +3135,20 @@ AutoJumpResetKeybind = MiscTab:AddKeybind("AutoJumpResetKeybind", {
         if #frictionTables == 0 then
             findFrictionTables()
         end
-
+        
         forceDefaultFriction()
+        
+        frictionTables = {}
+        lastFrictionScanTime = 0
+        
+        if bhopLoaded then
+            unloadBhop()
+            task.delay(0.1, function()
+                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
+                    loadBhop()
+                end
+            end)
+        end
 
         Fluent:Notify({
             Title = "Auto Jump",
