@@ -16,7 +16,6 @@ local airStates = {
     ["Freefall"] = true,
 }
 
--- ★ Работает на любой платформе (включая мобилу)
 local function setCrouchKey(state)
     local char = CharacterService:GetLocalCharacter()
     if char and char.DataRegistry then
@@ -26,7 +25,6 @@ local function setCrouchKey(state)
     end
 end
 
--- ★ Симуляция нажатия клавиши через DataRegistry (без VIM)
 local function simulateCrouchPress()
     setCrouchKey(true)
     task.wait(0.05)
