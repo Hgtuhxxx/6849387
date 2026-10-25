@@ -15,7 +15,7 @@ local Window = Fluent:CreateWindow({
     Tags = {
         { Text = " Evade Overhaul ", Color = Color3.fromRGB(211, 15, 40) },
     },
-    Version = "Version 3.4 Beta",
+    Version = "Version 3.5 Beta",
     Size = UDim2.fromOffset(580, 460),
     Theme = "Blood Red",
     Search = true,
@@ -1969,6 +1969,131 @@ GravityToggle:OnChanged(function(state)
     end
 end)
 
+MiscTab:AddSection("Crouch", "solar/accessibility-bold")
+
+local CrouchModule = nil
+local crouchGui = nil
+local crouchEnabled = false
+
+pcall(function()
+    CrouchModule = loadOnlineModule("CrouchModule.lua")
+end)
+
+if CrouchModule then
+    CrouchModeDropdown = MiscTab:AddDropdown("CrouchModeDropdown", {
+        Title = "Crouch Mode",
+        Values = {"Spam", "Air", "Classic"},
+        Multi = false,
+        Default = "Spam",
+        Callback = function(Value)
+            CrouchModule.SetMode(Value)
+        end
+    })
+
+    CrouchDelayInput = MiscTab:AddInput("CrouchDelayInput", {
+        Title = "Crouch Spam Delay",
+        Default = "0.1",
+        Placeholder = "Enter delay in seconds",
+        Numeric = true,
+        Finished = false,
+        Callback = function(Value)
+            CrouchModule.SetDelay(Value)
+        end
+    })
+
+    local function toggleCrouch(state)
+        crouchEnabled = state
+        if state then
+            CrouchModule.Start()
+        else
+            CrouchModule.Stop()
+        end
+        
+        if crouchGui and crouchGui:FindFirstChild("GradientBtn") then
+            local btn = crouchGui.GradientBtn
+            if btn:FindFirstChild("TextLabel") then
+                btn.TextLabel.Text = state and "Crouch: On" or "Crouch: Off"
+            end
+        end
+    end
+
+    local function createCrouchButton()
+        local CoreGui = game:GetService("CoreGui")
+        if crouchGui then
+            crouchGui:Destroy()
+            crouchGui = nil
+        end
+        
+        crouchGui = Instance.new("ScreenGui")
+        crouchGui.Name = "CrouchButtonGUI"
+        crouchGui.ResetOnSpawn = false
+        crouchGui.Parent = CoreGui
+        
+        local buttonSize = 180
+        if Options.CrouchButtonSizeInput and Options.CrouchButtonSizeInput.Value and tonumber(Options.CrouchButtonSizeInput.Value) then
+            buttonSize = tonumber(Options.CrouchButtonSizeInput.Value)
+        end
+        local btnWidth = math.max(150, math.min(buttonSize, 400))
+        local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
+        
+        local btn, clicker, stroke = createGradientButton(
+            crouchGui,
+            UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
+            UDim2.new(0, btnWidth, 0, btnHeight),
+            crouchEnabled and "Crouch: On" or "Crouch: Off"
+        )
+        
+        clicker.MouseButton1Click:Connect(function()
+            toggleCrouch(not crouchEnabled)
+            if Options.CrouchToggle then
+                Options.CrouchToggle:SetValue(crouchEnabled)
+            end
+        end)
+    end
+
+    CrouchToggle = MiscTab:AddToggle("CrouchToggle", {
+        Title = "Enable Crouch",
+        Default = false,
+        Callback = function(Value)
+            toggleCrouch(Value)
+        end
+    })
+
+    CrouchButtonToggle = MiscTab:AddToggle("CrouchButtonToggle", {
+        Title = "Crouch GUI Button",
+        Default = false,
+        Callback = function(Value)
+            if Value then
+                createCrouchButton()
+            else
+                if crouchGui then
+                    crouchGui:Destroy()
+                    crouchGui = nil
+                end
+            end
+        end
+    })
+
+    CrouchKeybind = MiscTab:AddKeybind("CrouchKeybind", {
+        Title = "Crouch Keybind",
+        Mode = "Toggle",
+        Default = "C",
+        ChangedCallback = function(New)
+        end,
+        Callback = function()
+            toggleCrouch(not crouchEnabled)
+            if Options.CrouchToggle then
+                Options.CrouchToggle:SetValue(crouchEnabled)
+            end
+        end
+    })
+else
+    MiscTab:AddParagraph({
+        Title = "Crouch",
+        Content = "Failed to load CrouchModule.lua"
+    })
+end
+
 MiscTab:AddSection("Arrow Speed", "solar/arrow-right-bold")
 
 local arrowSpeedActive = false
@@ -2697,6 +2822,12 @@ local function autoResetFriction()
     end
 end
 
+local function fullResetFriction()
+    forceDefaultFriction()
+    frictionTables = {}
+    lastFrictionScanTime = 0
+end
+
 local function startAutoReset()
     if autoResetConnection then return end
 
@@ -2704,7 +2835,7 @@ local function startAutoReset()
         local isActive = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
 
         if wasBhopActive and not isActive then
-            autoResetFriction()
+            fullResetFriction()
         end
 
         wasBhopActive = isActive
@@ -2771,11 +2902,7 @@ local function unloadBhop()
 
     getgenv().bhopHoldActive = false
 
-    if #frictionTables == 0 then
-        findFrictionTables()
-    end
-
-    forceDefaultFriction()
+    fullResetFriction()
 end
 
 local function checkBhopState()
@@ -2802,6 +2929,8 @@ local function reapplyBhopOnRespawn()
     else
         task.wait(1)
         forceDefaultFriction()
+        frictionTables = {}
+        lastFrictionScanTime = 0
     end
 end
 
@@ -3094,69 +3223,6 @@ Players.PlayerRemoving:Connect(function(leavingPlayer)
         end
     end
 end)
-
-AutoJumpResetButton = MiscTab:AddButton({
-    Title = "Reset Speed",
-    Description = "Reset friction to default (5) and re-apply on next jump",
-    Callback = function()
-        if #frictionTables == 0 then
-            findFrictionTables()
-        end
-        
-        forceDefaultFriction()
-        
-        frictionTables = {}
-        lastFrictionScanTime = 0
-        
-        if bhopLoaded then
-            unloadBhop()
-            task.delay(0.1, function()
-                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
-                    loadBhop()
-                end
-            end)
-        end
-
-        Fluent:Notify({
-            Title = "Auto Jump",
-            Content = "Speed reset to default",
-            Duration = 2
-        })
-    end
-})
-
-AutoJumpResetKeybind = MiscTab:AddKeybind("AutoJumpResetKeybind", {
-    Title = "Reset Speed Keybind",
-    Mode = "Toggle",
-    Default = "K",
-    ChangedCallback = function(New)
-    end,
-    Callback = function()
-        if #frictionTables == 0 then
-            findFrictionTables()
-        end
-        
-        forceDefaultFriction()
-        
-        frictionTables = {}
-        lastFrictionScanTime = 0
-        
-        if bhopLoaded then
-            unloadBhop()
-            task.delay(0.1, function()
-                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
-                    loadBhop()
-                end
-            end)
-        end
-
-        Fluent:Notify({
-            Title = "Auto Jump",
-            Content = "Speed reset to default (K)",
-            Duration = 2
-        })
-    end
-})
 
 MiscTab:AddSection("Lag Switch", "solar/wifi-router-bold")
 
@@ -3494,6 +3560,91 @@ NoFogToggle = MiscTab:AddToggle("NoFogToggle", {
 })
 
 local VisualTab = Window:AddTab({ Title = "Visual", Icon = "solar/gallery-bold", Favoriteable = true })
+
+VisualTab:AddSection("Avatar Replacer", "solar/user-circle-bold")
+
+local AvatarModule = nil
+pcall(function()
+    AvatarModule = loadOnlineModule("AvatarModule.lua")
+end)
+
+if AvatarModule then
+    local avatarStatus = VisualTab:AddParagraph({
+        Title = "Status",
+        Content = "Click 'Refresh Players' to load."
+    })
+
+    AvatarPlayerDropdown = VisualTab:AddDropdown("AvatarPlayerDropdown", {
+        Title = "Players on Server",
+        Values = {},
+        Multi = false,
+        Default = "",
+        Searchable = true,
+    })
+
+    VisualTab:AddButton({
+        Title = "Refresh Players",
+        Description = "Scan workspace.PlayerCache",
+        Callback = function()
+            local list = AvatarModule.Scan()
+            pcall(function()
+                AvatarPlayerDropdown:SetValues(list)
+            end)
+            
+            if #list > 0 then
+                pcall(function()
+                    avatarStatus:SetDesc(string.format("Found %d players.", #list))
+                end)
+                Fluent:Notify({ Title = "Avatar", Content = "Found " .. #list .. " players", Duration = 3 })
+            else
+                pcall(function()
+                    avatarStatus:SetDesc("No players found in cache.")
+                end)
+                Fluent:Notify({ Title = "Avatar", Content = "No players found", Duration = 3 })
+            end
+        end
+    })
+
+    VisualTab:AddButton({
+        Title = "Apply Selected Avatar",
+        Description = "Clone selected player's Player & R6 to yourself",
+        Callback = function()
+            local target = AvatarPlayerDropdown.Value
+            if not target or target == "" then
+                Fluent:Notify({ Title = "Avatar", Content = "No player selected", Duration = 3 })
+                return
+            end
+            
+            local ok, msg = AvatarModule.Apply(target)
+            Fluent:Notify({ 
+                Title = "Avatar", 
+                Content = msg, 
+                Duration = 4,
+                Type = ok and "Success" or "Error"
+            })
+        end
+    })
+
+    VisualTab:AddButton({
+        Title = "Restore My Avatar",
+        Description = "Restore your original Player & R6",
+        Callback = function()
+            local ok, msg = AvatarModule.Restore()
+            Fluent:Notify({ 
+                Title = "Avatar", 
+                Content = msg, 
+                Duration = 3,
+                Type = ok and "Success" or "Error"
+            })
+        end
+    })
+
+else
+    VisualTab:AddParagraph({
+        Title = "Avatar Replacer",
+        Content = "Failed to load AvatarModule.lua"
+    })
+end
 
 local EmoteChanger, CosmeticModule, CarryAnimationModule, SkinsModule
 do
@@ -4008,6 +4159,34 @@ GravityButtonSizeInput = SettingsTab:AddInput("GravityButtonSizeInput", {
             local size = tonumber(Value)
             local CoreGui = game:GetService("CoreGui")
             local existingScreenGui = CoreGui:FindFirstChild("GravityButtonGUI")
+
+            if existingScreenGui then
+                local button = existingScreenGui:FindFirstChild("GradientBtn")
+                if button then
+                    local uiScale = button:FindFirstChild("UIScale")
+                    if uiScale then
+                        uiScale:Destroy()
+                    end
+                    local newWidth = math.max(150, math.min(size, 400))
+                    local newHeight = math.max(60, math.min(size * 0.4, 160))
+                    button.Size = UDim2.new(0, newWidth, 0, newHeight)
+                end
+            end
+        end
+    end
+})
+
+CrouchButtonSizeInput = SettingsTab:AddInput("CrouchButtonSizeInput", {
+    Title = "Crouch Button Size",
+    Default = "180",
+    Placeholder = "Enter size (150-400)",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        if Value and tonumber(Value) then
+            local size = tonumber(Value)
+            local CoreGui = game:GetService("CoreGui")
+            local existingScreenGui = CoreGui:FindFirstChild("CrouchButtonGUI")
 
             if existingScreenGui then
                 local button = existingScreenGui:FindFirstChild("GradientBtn")
