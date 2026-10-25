@@ -3584,7 +3584,7 @@ if AvatarModule then
 
     VisualTab:AddButton({
         Title = "Refresh Players",
-        Description = "Scan workspace.PlayerCache",
+        Description = "Scan",
         Callback = function()
             local list = AvatarModule.Scan()
             pcall(function()
@@ -3607,7 +3607,7 @@ if AvatarModule then
 
     VisualTab:AddButton({
         Title = "Apply Selected Avatar",
-        Description = "Clone selected player's Player & R6 to yourself",
+        Description = "Clone selected player's",
         Callback = function()
             local target = AvatarPlayerDropdown.Value
             if not target or target == "" then
@@ -3627,7 +3627,7 @@ if AvatarModule then
 
     VisualTab:AddButton({
         Title = "Restore My Avatar",
-        Description = "Restore your original Player & R6",
+        Description = "Restore your original",
         Callback = function()
             local ok, msg = AvatarModule.Restore()
             Fluent:Notify({ 
