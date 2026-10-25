@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub",
+    Title = "Draconic Hub 1",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2537,8 +2537,8 @@ getgenv().autoJumpEnabled = false
 getgenv().bhopAccelValue = -0.5
 getgenv().jumpCooldown = 0.25
 getgenv().rotationEnabled = false
+
 getgenv().wallJumpEnabled = false
-getgenv().jumpMode = "Bounce" -- "Bounce" или "Realistic"
 
 local wallJumpStates = {
     WallrunLeft = true,
@@ -2573,32 +2573,57 @@ local wasBhopActive = false
 
 local lastFrictionScanTime = 0
 local FRICTION_SCAN_INTERVAL = 1
+
 local DEFAULT_FRICTION = 5
 
 local function startRotation()
-    if rotationConnection then rotationConnection:Disconnect() rotationConnection = nil end
+    if rotationConnection then
+        rotationConnection:Disconnect()
+        rotationConnection = nil
+    end
+
     if not getgenv().rotationEnabled or not HumanoidRootPart then return end
+
     rotationConnection = RunService.Heartbeat:Connect(function(deltaTime)
         if HumanoidRootPart and HumanoidRootPart.Parent then
             local currentRotation = HumanoidRootPart.Orientation
-            HumanoidRootPart.Orientation = Vector3.new(currentRotation.X, currentRotation.Y + (rotationSpeed * deltaTime), currentRotation.Z)
+            local newRotation = Vector3.new(
+                currentRotation.X,
+                currentRotation.Y + (rotationSpeed * deltaTime),
+                currentRotation.Z
+            )
+            HumanoidRootPart.Orientation = newRotation
         else
-            if rotationConnection then rotationConnection:Disconnect() rotationConnection = nil end
+            if rotationConnection then
+                rotationConnection:Disconnect()
+                rotationConnection = nil
+            end
         end
     end)
 end
 
 local function stopRotation()
-    if rotationConnection then rotationConnection:Disconnect() rotationConnection = nil end
+    if rotationConnection then
+        rotationConnection:Disconnect()
+        rotationConnection = nil
+    end
 end
 
 local function updateRotationState()
-    if getgenv().rotationEnabled and getgenv().autoJumpEnabled then startRotation() else stopRotation() end
+    if getgenv().rotationEnabled and getgenv().autoJumpEnabled then
+        startRotation()
+    else
+        stopRotation()
+    end
 end
 
 local function createBhopGradientButton()
     local CoreGui = game:GetService("CoreGui")
-    if bhopButtonScreenGui then bhopButtonScreenGui:Destroy() bhopButtonScreenGui = nil end
+
+    if bhopButtonScreenGui then
+        bhopButtonScreenGui:Destroy()
+        bhopButtonScreenGui = nil
+    end
 
     bhopButtonScreenGui = Instance.new("ScreenGui")
     bhopButtonScreenGui.Name = "BhopButtonGUI"
@@ -2622,12 +2647,18 @@ local function createBhopGradientButton()
     clicker.MouseButton1Click:Connect(function()
         getgenv().autoJumpEnabled = not getgenv().autoJumpEnabled
         featureStates.Bhop = getgenv().autoJumpEnabled
+
         if btn:FindFirstChild("TextLabel") then
             btn.TextLabel.Text = getgenv().autoJumpEnabled and "Auto Jump: On" or "Auto Jump: Off"
         end
-        if Options.BhopToggle then Options.BhopToggle:SetValue(getgenv().autoJumpEnabled) end
+
+        if Options.BhopToggle then
+            Options.BhopToggle:SetValue(getgenv().autoJumpEnabled)
+        end
+
         checkBhopState()
     end)
+
     return bhopButtonScreenGui
 end
 
@@ -2641,52 +2672,84 @@ local function updateBhopButtonText()
 end
 
 local function IsOnGround()
-    if not Character or not HumanoidRootPart or not Humanoid then return false end
+    if not Character or not HumanoidRootPart or not Humanoid then
+        return false
+    end
 
     local state = Humanoid:GetState()
-    if state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Swimming then return false end
-    if Humanoid:GetState() == Enum.HumanoidStateType.Running then return true end
+    if state == Enum.HumanoidStateType.Jumping or
+       state == Enum.HumanoidStateType.Freefall or
+       state == Enum.HumanoidStateType.Swimming then
+        return false
+    end
+
+    if Humanoid:GetState() == Enum.HumanoidStateType.Running then
+        return true
+    end
 
     local rayOrigin = HumanoidRootPart.Position
     local rayDirection = Vector3.new(0, -GROUND_CHECK_RAY_LENGTH, 0)
+
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     raycastParams.FilterDescendantsInstances = {Character}
     raycastParams.IgnoreWater = true
 
     local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
     if raycastResult then
         local surfaceNormal = raycastResult.Normal
         local angle = math.deg(math.acos(surfaceNormal:Dot(Vector3.new(0, 1, 0))))
+
         if angle <= MAX_SLOPE_ANGLE then
-            return math.abs(rayOrigin.Y - raycastResult.Position.Y) <= GROUND_CHECK_OFFSET
+            local heightDiff = math.abs(rayOrigin.Y - raycastResult.Position.Y)
+            return heightDiff <= GROUND_CHECK_OFFSET
         end
     end
-    if HumanoidRootPart.Velocity.Y > -1 and HumanoidRootPart.Velocity.Y < 1 then return true end
+
+    if HumanoidRootPart.Velocity.Y > -1 and HumanoidRootPart.Velocity.Y < 1 then
+        return true
+    end
+
     return false
 end
 
 local function findFrictionTables()
     local now = tick()
-    if now - lastFrictionScanTime < FRICTION_SCAN_INTERVAL and #frictionTables > 0 then return end
+    if now - lastFrictionScanTime < FRICTION_SCAN_INTERVAL and #frictionTables > 0 then
+        return
+    end
     lastFrictionScanTime = now
+
     frictionTables = {}
+
     for _, obj in pairs(getgc(true)) do
         if type(obj) == "table" and rawget(obj, "Friction") then
             local original = obj.Friction
-            if original == -0.5 then original = DEFAULT_FRICTION end
-            table.insert(frictionTables, { obj = obj, original = original })
+            if original == -0.5 then
+                original = DEFAULT_FRICTION
+            end
+            table.insert(frictionTables, {
+                obj = obj,
+                original = original
+            })
         end
     end
 end
 
 local function applyBhopFriction()
     local isActive = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
-    if #frictionTables == 0 then findFrictionTables() end
+
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
     for _, tableData in ipairs(frictionTables) do
         if tableData.obj and type(tableData.obj) == "table" then
             if isActive then
-                pcall(function() tableData.obj.Friction = getgenv().bhopAccelValue or -0.5 end)
+                pcall(function()
+                    tableData.obj.Friction = getgenv().bhopAccelValue or -0.5
+                end)
             else
                 pcall(function()
                     local restore = tableData.original
@@ -2699,75 +2762,88 @@ local function applyBhopFriction()
 end
 
 local function forceDefaultFriction()
-    if #frictionTables == 0 then findFrictionTables() end
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
     for _, tableData in ipairs(frictionTables) do
         if tableData.obj and type(tableData.obj) == "table" then
-            pcall(function() tableData.obj.Friction = DEFAULT_FRICTION end)
+            pcall(function()
+                tableData.obj.Friction = DEFAULT_FRICTION
+            end)
+        end
+    end
+end
+
+local function verifyDefaultFriction()
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
+    for _, tableData in ipairs(frictionTables) do
+        if tableData.obj and type(tableData.obj) == "table" then
+            if tableData.obj.Friction ~= DEFAULT_FRICTION then
+                pcall(function()
+                    tableData.obj.Friction = DEFAULT_FRICTION
+                end)
+            end
         end
     end
 end
 
 local function forceAccelerationFriction()
     local value = getgenv().bhopAccelValue or -0.5
-    if #frictionTables == 0 then findFrictionTables() end
+
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
     for _, tableData in ipairs(frictionTables) do
         if tableData.obj and type(tableData.obj) == "table" then
-            pcall(function() tableData.obj.Friction = value end)
+            pcall(function()
+                tableData.obj.Friction = value
+            end)
         end
     end
 end
 
 local function autoResetFriction()
-    if #frictionTables == 0 then findFrictionTables() end
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
     for _, tableData in ipairs(frictionTables) do
         if tableData.obj and type(tableData.obj) == "table" then
-            pcall(function() tableData.obj.Friction = DEFAULT_FRICTION end)
+            pcall(function()
+                tableData.obj.Friction = DEFAULT_FRICTION
+            end)
         end
     end
 end
 
-local function startAutoReset()
-    if autoResetConnection then return end
-    autoResetConnection = RunService.Heartbeat:Connect(function()
-        local isActive = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
-        if wasBhopActive and not isActive then autoResetFriction() end
-        wasBhopActive = isActive
-    end)
+local function fullResetFriction()
+    forceDefaultFriction()
+    frictionTables = {}
+    lastFrictionScanTime = 0
 end
 
--- ★ СИМУЛЯЦИЯ ПРЫЖКА ЧЕРЕЗ DataRegistry (для Realistic на телефоне)
-local function realisticJump()
-    local char = CharacterService:GetLocalCharacter()
-    if not char then return end
+local function startAutoReset()
+    if autoResetConnection then return end
 
-    -- 1. Отправляем реальный прыжок через Humanoid (это сработает на телефоне)
-    pcall(function()
-        if Humanoid then
-            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end)
+    autoResetConnection = RunService.Heartbeat:Connect(function()
+        local isActive = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
 
-    -- 2. Дополнительно триггерим игровые события для реалистичного прыжка (если есть)
-    pcall(function()
-        if char.DataRegistry then
-            -- Это эмулирует нажатие пробела на телефоне
-            char.DataRegistry:Set("JumpKey", true)
-            task.wait(0.05)
-            char.DataRegistry:Set("JumpKey", false)
+        if wasBhopActive and not isActive then
+            fullResetFriction()
         end
-    end)
-    
-    -- 3. Если игра использует события для прыжка (JumpReact)
-    pcall(function()
-        local events = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
-        if events and events:FindFirstChild("JumpReact") then
-            events.JumpReact:FireServer()
-        end
+
+        wasBhopActive = isActive
     end)
 end
 
 local function updateBhop()
     if not bhopLoaded then return end
+
     local isActive = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
 
     if isActive then
@@ -2780,18 +2856,15 @@ local function updateBhop()
             if not Humanoid or not HumanoidRootPart then return end
         end
 
-        if Humanoid:GetState() == Enum.HumanoidStateType.Dead then return end
+        if Humanoid:GetState() == Enum.HumanoidStateType.Dead then
+            return
+        end
 
         local now = tick()
         local cooldown = getgenv().jumpCooldown or 0.25
 
         if IsOnGround() and (now - LastJump) > cooldown then
-            if getgenv().jumpMode == "Realistic" then
-                realisticJump()
-            else
-                -- Bounce (стандартный)
-                Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
+            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             LastJump = now
         end
     end
@@ -2800,24 +2873,47 @@ end
 local function loadBhop()
     if bhopLoaded then return end
     bhopLoaded = true
-    if #frictionTables == 0 then findFrictionTables() end
+
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
     forceAccelerationFriction()
-    if bhopConnection then bhopConnection:Disconnect() end
-    bhopConnection = RunService.Heartbeat:Connect(function(deltaTime) updateBhop() end)
+
+    if bhopConnection then
+        bhopConnection:Disconnect()
+    end
+
+    bhopConnection = RunService.Heartbeat:Connect(function(deltaTime)
+        updateBhop()
+    end)
 end
 
 local function unloadBhop()
     if not bhopLoaded then return end
+
     bhopLoaded = false
-    if bhopConnection then bhopConnection:Disconnect() bhopConnection = nil end
+
+    if bhopConnection then
+        bhopConnection:Disconnect()
+        bhopConnection = nil
+    end
+
     getgenv().bhopHoldActive = false
-    if #frictionTables == 0 then findFrictionTables() end
-    forceDefaultFriction()
+
+    fullResetFriction()
 end
 
 local function checkBhopState()
     local shouldLoad = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
-    if shouldLoad then loadBhop() updateRotationState() else unloadBhop() stopRotation() end
+
+    if shouldLoad then
+        loadBhop()
+        updateRotationState()
+    else
+        unloadBhop()
+        stopRotation()
+    end
 end
 
 local function reapplyBhopOnRespawn()
@@ -2832,40 +2928,70 @@ local function reapplyBhopOnRespawn()
     else
         task.wait(1)
         forceDefaultFriction()
+        frictionTables = {}
+        lastFrictionScanTime = 0
     end
 end
 
 local function setupJumpButton()
-    if UserInputService.TouchEnabled then
+    local isMobile = UserInputService.TouchEnabled
+
+    if isMobile then
         task.spawn(function()
             task.wait(2)
-            pcall(function()
+
+            local success, err = pcall(function()
                 local touchGui = player:WaitForChild("PlayerGui"):WaitForChild("TouchGui")
+                if not touchGui then return end
+
                 local touchControlFrame = touchGui:WaitForChild("TouchControlFrame")
+                if not touchControlFrame then return end
+
                 local jumpButton = touchControlFrame:WaitForChild("JumpButton")
-                
-                if jumpButtonDownConnection then jumpButtonDownConnection:Disconnect() jumpButtonDownConnection = nil end
-                if jumpButtonUpConnection then jumpButtonUpConnection:Disconnect() jumpButtonUpConnection = nil end
+                if not jumpButton then return end
+
+                if jumpButtonDownConnection then
+                    jumpButtonDownConnection:Disconnect()
+                    jumpButtonDownConnection = nil
+                end
+                if jumpButtonUpConnection then
+                    jumpButtonUpConnection:Disconnect()
+                    jumpButtonUpConnection = nil
+                end
 
                 jumpButtonDownConnection = jumpButton.MouseButton1Down:Connect(function()
-                    if featureStates.BhopHold then getgenv().bhopHoldActive = true checkBhopState() end
+                    if featureStates.BhopHold then
+                        getgenv().bhopHoldActive = true
+                        checkBhopState()
+                    end
                 end)
+
                 jumpButtonUpConnection = jumpButton.MouseButton1Up:Connect(function()
-                    getgenv().bhopHoldActive = false checkBhopState()
+                    getgenv().bhopHoldActive = false
+                    checkBhopState()
                 end)
             end)
         end)
     end
 end
 
+local function getLocalCharWallJump()
+    return CharacterService:GetLocalCharacter()
+end
+
 local function updateWallJump()
     if not getgenv().wallJumpEnabled then return end
-    local char = CharacterService:GetLocalCharacter()
+
+    local char = getLocalCharWallJump()
     if not char or not char.State then return end
+
     local state = char.State.State
     if not wallJumpStates[state] then return end
+
     if char.Movement and char.Movement.Jump then
-        pcall(function() char.Movement:Jump(nil, true) end)
+        pcall(function()
+            char.Movement:Jump(nil, true)
+        end)
     end
 end
 
@@ -2875,21 +3001,11 @@ local function startWallJump()
 end
 
 local function stopWallJump()
-    if wallJumpConnection then wallJumpConnection:Disconnect() wallJumpConnection = nil end
-end
-
--- ================= UI =================
-
-JumpModeDropdown = MiscTab:AddDropdown("JumpModeDropdown", {
-    Title = "Jump Mode",
-    Values = {"Bounce", "Realistic"},
-    Multi = false,
-    Default = "Bounce",
-    Callback = function(Value)
-        getgenv().jumpMode = Value
-        Fluent:Notify({ Title = "Auto Jump", Content = "Mode: " .. Value, Duration = 2 })
+    if wallJumpConnection then
+        wallJumpConnection:Disconnect()
+        wallJumpConnection = nil
     end
-})
+end
 
 RotationToggle = MiscTab:AddToggle("RotationToggle", {
     Title = "Rotation 360",
@@ -2907,6 +3023,7 @@ BhopToggle = MiscTab:AddToggle("BhopToggle", {
     Callback = function(Value)
         featureStates.Bhop = Value
         getgenv().autoJumpEnabled = Value
+
         updateBhopButtonText()
         updateRotationState()
         checkBhopState()
@@ -2931,7 +3048,11 @@ WallJumpToggle = MiscTab:AddToggle("WallJumpToggle", {
     Default = false,
     Callback = function(Value)
         getgenv().wallJumpEnabled = Value
-        if Value then startWallJump() else stopWallJump() end
+        if Value then
+            startWallJump()
+        else
+            stopWallJump()
+        end
     end
 })
 
@@ -2939,8 +3060,13 @@ BhopButtonToggle = MiscTab:AddToggle("BhopButtonToggle", {
     Title = "Bhop Button GUI",
     Default = false,
     Callback = function(Value)
-        if Value then createBhopGradientButton() else
-            if bhopButtonScreenGui then bhopButtonScreenGui:Destroy() bhopButtonScreenGui = nil end
+        if Value then
+            createBhopGradientButton()
+        else
+            if bhopButtonScreenGui then
+                bhopButtonScreenGui:Destroy()
+                bhopButtonScreenGui = nil
+            end
         end
     end
 })
@@ -2949,10 +3075,16 @@ BhopKeybind = MiscTab:AddKeybind("BhopKeybind", {
     Title = "Bhop Keybind",
     Mode = "Toggle",
     Default = "B",
+    ChangedCallback = function(New)
+    end,
     Callback = function()
         getgenv().autoJumpEnabled = not getgenv().autoJumpEnabled
         featureStates.Bhop = getgenv().autoJumpEnabled
-        if Options.BhopToggle then Options.BhopToggle:SetValue(getgenv().autoJumpEnabled) end
+
+        if Options.BhopToggle then
+            Options.BhopToggle:SetValue(getgenv().autoJumpEnabled)
+        end
+
         updateBhopButtonText()
         checkBhopState()
     end
@@ -2963,15 +3095,21 @@ BhopAccelInput = MiscTab:AddInput("BhopAccelInput", {
     Default = "-0.5",
     Placeholder = "Enter negative value (e.g., -0.5)",
     Numeric = true,
+    Finished = false,
     Callback = function(Value)
         local num = tonumber(Value)
         if num and string.sub(Value, 1, 1) == "-" then
             getgenv().bhopAccelValue = num
+
             if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
-                if #frictionTables == 0 then findFrictionTables() end
+                if #frictionTables == 0 then
+                    findFrictionTables()
+                end
                 for _, tableData in ipairs(frictionTables) do
                     if tableData.obj and type(tableData.obj) == "table" then
-                        pcall(function() tableData.obj.Friction = num end)
+                        pcall(function()
+                            tableData.obj.Friction = num
+                        end)
                     end
                 end
             end
@@ -2984,46 +3122,12 @@ JumpCooldownInput = MiscTab:AddInput("JumpCooldownInput", {
     Default = "0.25",
     Placeholder = "Enter cooldown in seconds",
     Numeric = true,
+    Finished = false,
     Callback = function(Value)
         local num = tonumber(Value)
-        if num and num > 0 then getgenv().jumpCooldown = num end
-    end
-})
-
-AutoJumpResetButton = MiscTab:AddButton({
-    Title = "Reset Speed",
-    Description = "Reset friction to default (5)",
-    Callback = function()
-        if #frictionTables == 0 then findFrictionTables() end
-        forceDefaultFriction()
-        frictionTables = {}
-        lastFrictionScanTime = 0
-        if bhopLoaded then
-            unloadBhop()
-            task.delay(0.1, function()
-                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then loadBhop() end
-            end)
+        if num and num > 0 then
+            getgenv().jumpCooldown = num
         end
-        Fluent:Notify({ Title = "Auto Jump", Content = "Speed reset to default", Duration = 2 })
-    end
-})
-
-AutoJumpResetKeybind = MiscTab:AddKeybind("AutoJumpResetKeybind", {
-    Title = "Reset Speed Keybind",
-    Mode = "Toggle",
-    Default = "K",
-    Callback = function()
-        if #frictionTables == 0 then findFrictionTables() end
-        forceDefaultFriction()
-        frictionTables = {}
-        lastFrictionScanTime = 0
-        if bhopLoaded then
-            unloadBhop()
-            task.delay(0.1, function()
-                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then loadBhop() end
-            end)
-        end
-        Fluent:Notify({ Title = "Auto Jump", Content = "Speed reset to default (K)", Duration = 2 })
     end
 })
 
@@ -3033,6 +3137,7 @@ RunService.Heartbeat:Connect(function()
         if Character then
             Humanoid = Character:FindFirstChildOfClass("Humanoid")
             HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+
             updateRotationState()
         else
             Humanoid = nil
@@ -3042,6 +3147,10 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+if characterConnection then
+    characterConnection:Disconnect()
+end
+
 characterConnection = player.CharacterAdded:Connect(function(character)
     Character = character
     frictionTables = {}
@@ -3049,6 +3158,7 @@ characterConnection = player.CharacterAdded:Connect(function(character)
     task.wait(0.5)
     Humanoid = character:WaitForChild("Humanoid")
     HumanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
     setupJumpButton()
     reapplyBhopOnRespawn()
     updateRotationState()
@@ -3056,6 +3166,7 @@ end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
     if gameProcessedEvent then return end
+
     if input.KeyCode == Enum.KeyCode.Space and featureStates.BhopHold then
         getgenv().bhopHoldActive = true
         checkBhopState()
@@ -3074,16 +3185,24 @@ end)
 
 task.spawn(function()
     task.wait(2)
+
     if player.Character then
         Character = player.Character
         Humanoid = Character:FindFirstChildOfClass("Humanoid")
         HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
     end
+
     setupJumpButton()
     startAutoReset()
-    if featureStates.Bhop then checkBhopState() end
+
+    if featureStates.Bhop then
+        checkBhopState()
+    end
+
     task.wait(1)
-    if Options.BhopButtonToggle and Options.BhopButtonToggle.Value then createBhopGradientButton() end
+    if Options.BhopButtonToggle and Options.BhopButtonToggle.Value then
+        createBhopGradientButton()
+    end
 end)
 
 Players.PlayerRemoving:Connect(function(leavingPlayer)
@@ -3091,8 +3210,16 @@ Players.PlayerRemoving:Connect(function(leavingPlayer)
         unloadBhop()
         stopRotation()
         stopWallJump()
-        if autoResetConnection then autoResetConnection:Disconnect() autoResetConnection = nil end
-        if characterConnection then characterConnection:Disconnect() characterConnection = nil end
+
+        if autoResetConnection then
+            autoResetConnection:Disconnect()
+            autoResetConnection = nil
+        end
+
+        if characterConnection then
+            characterConnection:Disconnect()
+            characterConnection = nil
+        end
     end
 end)
 
