@@ -1975,7 +1975,7 @@ local crouchGui = nil
 local crouchEnabled = false
 
 pcall(function()
-    CrouchModule = loadOnlineModule("CrouchModule2.lua")
+    CrouchModule = loadOnlineModule("CrouchModule.lua")
 end)
 
 if CrouchModule then
