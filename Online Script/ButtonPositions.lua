@@ -9,6 +9,7 @@ local buttonGUIs = {
     "AutoCarryButtonGUI",
     "SlideButtonGUI",
     "GravityButtonGUI",
+    "CrouchButtonGUI",
     "BhopButtonGUI",
     "LagSwitchButtonGUI",
 }
