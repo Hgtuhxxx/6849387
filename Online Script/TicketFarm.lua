@@ -17,23 +17,19 @@ local state = "waiting"
 local lastRespawn = 0
 local lastNextbotTeleport = 0
 
--- ★ Поиск папок с некстботами
 local function getNextbotFolders()
     local folders = {}
     
-    -- workspace.Players (если боты там с Team == "Nextbot")
     local playersFolder = workspace:FindFirstChild("Players")
     if playersFolder then
         table.insert(folders, playersFolder)
     end
     
-    -- workspace.NPCs
     local npcsFolder = workspace:FindFirstChild("NPCs")
     if npcsFolder then
         table.insert(folders, npcsFolder)
     end
     
-    -- workspace.Game.Players
     local gameFolder = workspace:FindFirstChild("Game")
     if gameFolder then
         local gamePlayers = gameFolder:FindFirstChild("Players")
@@ -45,22 +41,18 @@ local function getNextbotFolders()
     return folders
 end
 
--- ★ Проверка: некстбот ли это
 local function isNextbot(model)
     if not model or not model:IsA("Model") then return false end
     
-    -- Проверка 1: Team == "Nextbot"
     local team = model:GetAttribute("Team")
     if team == "Nextbot" then return true end
     
-    -- Проверка 2: AI == true
     local ai = model:GetAttribute("AI")
     if ai == true then return true end
     
     return false
 end
 
--- ★ Поиск ближайшего некстбота
 local function getNearestNextbot(maxDist)
     maxDist = maxDist or NEXTBOT_CHECK_RADIUS
     
@@ -102,7 +94,6 @@ local function getNearestNextbot(maxDist)
     return nearest, nearestDist
 end
 
--- ★ Получить случайный спавн
 local function getRandomSpawn()
     local map = workspace:FindFirstChild("Map")
     if not map then return nil end
@@ -212,7 +203,6 @@ local function tryRespawn()
     end
 end
 
--- ★ Телепорт на случайный спавн (когда нектбот рядом)
 local function teleportToRandomSpawn()
     local now = tick()
     if now - lastNextbotTeleport < NEXTBOT_TELEPORT_COOLDOWN then return false end
@@ -236,10 +226,8 @@ local function tickFarm()
         return
     end
 
-    -- ★ ПРОВЕРКА НЕКСТБОТА (10 studs)
     local nearestBot, botDist = getNearestNextbot(NEXTBOT_CHECK_RADIUS)
     if nearestBot then
-        print("[TicketFarm] Nextbot detected at", math.floor(botDist), "studs — teleporting to spawn")
         teleportToRandomSpawn()
         return
     end
