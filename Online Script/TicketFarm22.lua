@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local PICKUP_RADIUS = 6
 local TICKET_OFFSET = Vector3.new(0, 2, 0)
 local RESPAWN_COOLDOWN = 1.0
-local NEXTBOT_CHECK_RADIUS = 70
+local NEXTBOT_CHECK_RADIUS = 100
 local NEXTBOT_TELEPORT_COOLDOWN = 0
 
 local running = false
