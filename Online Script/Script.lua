@@ -2822,12 +2822,6 @@ local function autoResetFriction()
     end
 end
 
-local function fullResetFriction()
-    forceDefaultFriction()
-    frictionTables = {}
-    lastFrictionScanTime = 0
-end
-
 local function startAutoReset()
     if autoResetConnection then return end
 
@@ -2835,7 +2829,7 @@ local function startAutoReset()
         local isActive = getgenv().autoJumpEnabled or getgenv().bhopHoldActive
 
         if wasBhopActive and not isActive then
-            fullResetFriction()
+            autoResetFriction()
         end
 
         wasBhopActive = isActive
@@ -2902,7 +2896,11 @@ local function unloadBhop()
 
     getgenv().bhopHoldActive = false
 
-    fullResetFriction()
+    if #frictionTables == 0 then
+        findFrictionTables()
+    end
+
+    forceDefaultFriction()
 end
 
 local function checkBhopState()
@@ -2929,8 +2927,6 @@ local function reapplyBhopOnRespawn()
     else
         task.wait(1)
         forceDefaultFriction()
-        frictionTables = {}
-        lastFrictionScanTime = 0
     end
 end
 
@@ -3223,6 +3219,69 @@ Players.PlayerRemoving:Connect(function(leavingPlayer)
         end
     end
 end)
+
+AutoJumpResetButton = MiscTab:AddButton({
+    Title = "Reset Speed",
+    Description = "Reset friction to default (5) and re-apply on next jump",
+    Callback = function()
+        if #frictionTables == 0 then
+            findFrictionTables()
+        end
+        
+        forceDefaultFriction()
+        
+        frictionTables = {}
+        lastFrictionScanTime = 0
+        
+        if bhopLoaded then
+            unloadBhop()
+            task.delay(0.1, function()
+                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
+                    loadBhop()
+                end
+            end)
+        end
+
+        Fluent:Notify({
+            Title = "Auto Jump",
+            Content = "Speed reset to default",
+            Duration = 2
+        })
+    end
+})
+
+AutoJumpResetKeybind = MiscTab:AddKeybind("AutoJumpResetKeybind", {
+    Title = "Reset Speed Keybind",
+    Mode = "Toggle",
+    Default = "K",
+    ChangedCallback = function(New)
+    end,
+    Callback = function()
+        if #frictionTables == 0 then
+            findFrictionTables()
+        end
+        
+        forceDefaultFriction()
+        
+        frictionTables = {}
+        lastFrictionScanTime = 0
+        
+        if bhopLoaded then
+            unloadBhop()
+            task.delay(0.1, function()
+                if getgenv().autoJumpEnabled or getgenv().bhopHoldActive then
+                    loadBhop()
+                end
+            end)
+        end
+
+        Fluent:Notify({
+            Title = "Auto Jump",
+            Content = "Speed reset to default (K)",
+            Duration = 2
+        })
+    end
+})
 
 MiscTab:AddSection("Lag Switch", "solar/wifi-router-bold")
 
