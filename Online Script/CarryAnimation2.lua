@@ -1,234 +1,196 @@
-local CarryPlayers = {}
+local CarryAnimation = {}
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
+local carryRegistry = {}
+local originalCarryContents = {}
 
-local player = Players.LocalPlayer
-local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
+function CarryAnimation.scan()
+    carryRegistry = {}
+    local found = false
 
-local CharacterService
-pcall(function()
-    CharacterService = require(ReplicatedStorage.Services.Asset.CharacterService)
-end)
+    local roots = {
+        game:GetService("ReplicatedStorage"):FindFirstChild("Items")
+            and game:GetService("ReplicatedStorage").Items:FindFirstChild("ItemPacks"),
+        game:GetService("ReplicatedStorage"):FindFirstChild("Items")
+            and game:GetService("ReplicatedStorage").Items:FindFirstChild("BaseItems"),
+    }
 
-local deps = {}
-local AutoCarryConnection = nil
-local carryWeldConnection = nil
-local started = false
-local enabled = false
-local isCarrying = false
-
-local carryStates = {
-    CarryIdle = true,
-    CarryMove = true,
-    CarryAir = true,
-    CarrySlide = true,
-}
-
-local function getLocalState()
-    if not CharacterService then
-        return nil
-    end
-    local char = CharacterService:GetLocalCharacter()
-    if char and char.State then
-        return char.State.State
-    end
-    return nil
-end
-
-local function isInCarryState()
-    local state = getLocalState()
-    return state and carryStates[state] == true
-end
-
-local function isCarryingPlayer()
-    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
-    if char then
-        local carryWeld = char:FindFirstChild("CarryWeld")
-        if carryWeld then
-            isCarrying = true
-            return true
-        end
-
-        local carrying = char:GetAttribute("Carrying")
-        if carrying and carrying ~= 0 then
-            isCarrying = true
-            return true
-        end
-    end
-
-    isCarrying = false
-    return false
-end
-
-local function startAutoCarry()
-    if AutoCarryConnection then
-        AutoCarryConnection:Disconnect()
-        AutoCarryConnection = nil
-    end
-
-    AutoCarryConnection = RunService.Heartbeat:Connect(function()
-        if not enabled then
-            return
-        end
-
-        if isCarryingPlayer() then
-            return
-        end
-
-        if isInCarryState() then
-            return
-        end
-
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-        if hrp then
-            local playersFolder = Workspace:FindFirstChild("Players")
-            if not playersFolder then return end
-
-            for _, otherChar in ipairs(playersFolder:GetChildren()) do
-                if otherChar.Name ~= player.Name then
-                    local otherTag = otherChar:GetAttribute("Tag")
-                    if otherTag then
-                        local otherHrp = otherChar:FindFirstChild("HumanoidRootPart")
-                        if otherHrp then
-                            local dist = (hrp.Position - otherHrp.Position).Magnitude
-                            if dist <= 20 then
-                                if InteractRemote then
-                                    InteractRemote:FireServer("Carry", otherTag)
-                                end
-                                task.wait(0.01)
-                            end
-                        end
+    local function collectModules(parent, pathPrefix)
+        for _, child in ipairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local key = child.Name
+                if carryRegistry[key] then
+                    local i = 2
+                    while carryRegistry[key .. " (" .. i .. ")"] do
+                        i = i + 1
                     end
+                    key = key .. " (" .. i .. ")"
+                end
+                carryRegistry[key] = {
+                    module = child,
+                    path = pathPrefix .. "." .. child.Name,
+                    realName = child.Name,
+                }
+                found = true
+            elseif child:IsA("Folder") then
+                collectModules(child, pathPrefix .. "." .. child.Name)
+            end
+        end
+    end
+
+    local function walk(parent, pathPrefix, depth)
+        if depth > 15 then return end
+        for _, child in ipairs(parent:GetChildren()) do
+            if child:IsA("Folder") then
+                if child.Name == "CarryAnimations" then
+                    collectModules(child, pathPrefix .. "." .. child.Name)
+                else
+                    walk(child, pathPrefix .. "." .. child.Name, depth + 1)
                 end
             end
         end
-    end)
-end
-
-local function stopAutoCarry()
-    if AutoCarryConnection then
-        AutoCarryConnection:Disconnect()
-        AutoCarryConnection = nil
-    end
-    isCarrying = false
-end
-
-local function updateButtonText(btn)
-    if btn and btn:FindFirstChild("TextLabel") then
-        local text = isCarrying and "Auto Carry: Carrying" or (enabled and "Auto Carry: On" or "Auto Carry: Off")
-        btn.TextLabel.Text = text
-    end
-end
-
-function CarryPlayers.init(initDeps)
-    deps = initDeps or {}
-end
-
-function CarryPlayers.setEnabled(state)
-    enabled = state and true or false
-    if enabled then
-        startAutoCarry()
-    else
-        stopAutoCarry()
     end
 
-    local screenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-    local btn = screenGui and screenGui:FindFirstChild("GradientBtn")
-    updateButtonText(btn)
-end
-
-function CarryPlayers.setGUI(visible)
-    local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-
-    if not visible then
-        if existingScreenGui then
-            existingScreenGui:Destroy()
+    for _, root in ipairs(roots) do
+        if root then
+            pcall(function()
+                walk(root, "ReplicatedStorage.Items." .. root.Name, 0)
+            end)
         end
-        return
     end
 
-    if existingScreenGui then
-        existingScreenGui:Destroy()
+    local names = {}
+    for name, _ in pairs(carryRegistry) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+
+    return names, found
+end
+
+local function saveOriginalCarry(name)
+    if originalCarryContents[name] then return end
+    local entry = carryRegistry[name]
+    if not entry then return end
+
+    local saved = {
+        children = {},
+        name = nil,
+        desc = nil,
+        creator = nil,
+        header = nil,
+    }
+
+    for _, child in ipairs(entry.module:GetChildren()) do
+        saved.children[child.Name] = child:Clone()
     end
 
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "AutoCarryButtonGUI"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = CoreGui
-
-    local buttonSize = 180
-    if deps.getButtonSize then
-        buttonSize = tonumber(deps.getButtonSize()) or 180
+    local ok, data = pcall(require, entry.module)
+    if ok and type(data) == "table" then
+        if data.AppearanceInfo then
+            saved.name = data.AppearanceInfo.Name
+            saved.desc = data.AppearanceInfo.Desc
+            saved.creator = data.AppearanceInfo.Creator
+        end
+        if data.UIInfo then
+            saved.header = data.UIInfo.Header
+        end
     end
 
-    local btnWidth = math.max(150, math.min(buttonSize, 400))
-    local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
+    originalCarryContents[name] = saved
+end
 
-    local btn, clicker = deps.createGradientButton(
-        screenGui,
-        UDim2.new(0.5, -btnWidth / 2, 0.5, -btnHeight / 2),
-        UDim2.new(0, btnWidth, 0, btnHeight),
-        "Auto Carry: Off"
+function CarryAnimation.replace(targetName, donorName)
+    local targetEntry = carryRegistry[targetName]
+    local donorEntry = carryRegistry[donorName]
+    if not targetEntry or not donorEntry then
+        return false, "CarryAnimation not found in registry"
+    end
+
+    saveOriginalCarry(targetName)
+
+    local donorChildren = donorEntry.module:GetChildren()
+    if #donorChildren == 0 then
+        return false, "Donor has no children"
+    end
+
+    local removedCount = 0
+    for _, child in ipairs(targetEntry.module:GetChildren()) do
+        child:Destroy()
+        removedCount = removedCount + 1
+    end
+
+    local addedCount = 0
+    for _, child in ipairs(donorChildren) do
+        local clone = child:Clone()
+        clone.Parent = targetEntry.module
+        addedCount = addedCount + 1
+    end
+
+    local okTarget, targetData = pcall(require, targetEntry.module)
+    local okDonor, donorData = pcall(require, donorEntry.module)
+
+    if okTarget and okDonor and type(targetData) == "table" and type(donorData) == "table" then
+        if donorData.AppearanceInfo then
+            targetData.AppearanceInfo = targetData.AppearanceInfo or {}
+            
+            if donorData.AppearanceInfo.Name then
+                targetData.AppearanceInfo.Name = donorData.AppearanceInfo.Name
+            end
+            if donorData.AppearanceInfo.Desc then
+                targetData.AppearanceInfo.Desc = donorData.AppearanceInfo.Desc
+            end
+            if donorData.AppearanceInfo.Creator then
+                targetData.AppearanceInfo.Creator = donorData.AppearanceInfo.Creator
+            end
+        end
+        
+        if donorData.UIInfo and donorData.UIInfo.Header then
+            targetData.UIInfo = targetData.UIInfo or {}
+            targetData.UIInfo.Header = donorData.UIInfo.Header
+        end
+    end
+
+    return true, string.format(
+        "Removed %d, added %d objects from '%s' to '%s' (Name, Desc, Creator, Header)",
+        removedCount, addedCount, donorName, targetName
     )
+end
 
-    updateButtonText(btn)
+function CarryAnimation.restore(targetName)
+    local saved = originalCarryContents[targetName]
+    if not saved then
+        return false, "Original not saved (replace was not performed)"
+    end
+    local entry = carryRegistry[targetName]
+    if not entry then
+        return false, "Module not found"
+    end
 
-    clicker.MouseButton1Click:Connect(function()
-        CarryPlayers.setEnabled(not enabled)
-        if deps.setAutoCarryToggle then
-            deps.setAutoCarryToggle(enabled)
+    for _, child in ipairs(entry.module:GetChildren()) do
+        child:Destroy()
+    end
+
+    local restored = 0
+    for _, clone in pairs(saved.children or {}) do
+        local newClone = clone:Clone()
+        newClone.Parent = entry.module
+        restored = restored + 1
+    end
+
+    local ok, data = pcall(require, entry.module)
+    if ok and type(data) == "table" then
+        data.AppearanceInfo = data.AppearanceInfo or {}
+        if saved.name ~= nil then data.AppearanceInfo.Name = saved.name end
+        if saved.desc ~= nil then data.AppearanceInfo.Desc = saved.desc end
+        if saved.creator ~= nil then data.AppearanceInfo.Creator = saved.creator end
+        
+        if saved.header ~= nil then
+            data.UIInfo = data.UIInfo or {}
+            data.UIInfo.Header = saved.header
         end
-    end)
-
-    local autoCarryToggle = deps.getAutoCarryToggle and deps.getAutoCarryToggle()
-    if autoCarryToggle then
-        autoCarryToggle:OnChanged(function(state)
-            CarryPlayers.setEnabled(state)
-        end)
     end
+
+    return true, string.format("Restored %d objects + properties for '%s'", restored, targetName)
 end
 
-local function setupCarryWeldListener()
-    if carryWeldConnection then
-        carryWeldConnection:Disconnect()
-        carryWeldConnection = nil
-    end
-
-    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
-    if char then
-        carryWeldConnection = char.ChildAdded:Connect(function(child)
-            if child.Name == "CarryWeld" then
-                isCarrying = true
-            end
-        end)
-
-        carryWeldConnection = char.ChildRemoved:Connect(function(child)
-            if child.Name == "CarryWeld" then
-                isCarrying = false
-            end
-        end)
-    end
-end
-
-function CarryPlayers.start()
-    if started then
-        return
-    end
-    started = true
-
-    player.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        setupCarryWeldListener()
-    end)
-
-    task.wait(1)
-    setupCarryWeldListener()
-end
-
-return CarryPlayers
+return CarryAnimation
