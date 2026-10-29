@@ -67,6 +67,23 @@ function EmoteChanger.scan()
     return names, found
 end
 
+function EmoteChanger.getSelectionVariants(donorName)
+    local entry = emoteRegistry[donorName]
+    if not entry then return {} end
+    
+    local selection = entry.module:FindFirstChild("Selection")
+    if not selection then return {} end
+    
+    local variants = {}
+    for _, child in ipairs(selection:GetChildren()) do
+        if child:IsA("Folder") then
+            table.insert(variants, child.Name)
+        end
+    end
+    table.sort(variants)
+    return variants
+end
+
 local function saveOriginalEmote(name)
     if originalEmoteContents[name] then return end
     local entry = emoteRegistry[name]
@@ -79,6 +96,7 @@ local function saveOriginalEmote(name)
         creator = nil,
         speedMult = nil,
         sound = nil,
+        header = nil,
     }
 
     for _, child in ipairs(entry.module:GetChildren()) do
@@ -96,12 +114,15 @@ local function saveOriginalEmote(name)
             saved.speedMult = data.EmoteInfo.SpeedMult
             saved.sound = data.EmoteInfo.Sound
         end
+        if data.UIInfo then
+            saved.header = data.UIInfo.Header
+        end
     end
 
     originalEmoteContents[name] = saved
 end
 
-function EmoteChanger.replace(targetName, donorName)
+function EmoteChanger.replace(targetName, donorName, selectionVariant)
     local targetEntry = emoteRegistry[targetName]
     local donorEntry = emoteRegistry[donorName]
     if not targetEntry or not donorEntry then
@@ -110,7 +131,19 @@ function EmoteChanger.replace(targetName, donorName)
 
     saveOriginalEmote(targetName)
 
-    local donorChildren = donorEntry.module:GetChildren()
+    local sourceFolder = donorEntry.module
+    local selection = donorEntry.module:FindFirstChild("Selection")
+    
+    if selection and selectionVariant and selectionVariant ~= "" then
+        local variantFolder = selection:FindFirstChild(selectionVariant)
+        if variantFolder then
+            sourceFolder = variantFolder
+        else
+            return false, "Variant '" .. tostring(selectionVariant) .. "' not found in donor"
+        end
+    end
+
+    local donorChildren = sourceFolder:GetChildren()
     if #donorChildren == 0 then
         return false, "Donor has no children"
     end
@@ -144,11 +177,17 @@ function EmoteChanger.replace(targetName, donorName)
             targetData.EmoteInfo.SpeedMult = donorData.EmoteInfo.SpeedMult
             targetData.EmoteInfo.Sound = donorData.EmoteInfo.Sound
         end
+
+        if donorData.UIInfo then
+            targetData.UIInfo = targetData.UIInfo or {}
+            targetData.UIInfo.Header = donorData.UIInfo.Header
+        end
     end
 
+    local variantText = selectionVariant and (" [Variant: " .. selectionVariant .. "]") or ""
     return true, string.format(
-        "Removed %d, added %d objects from '%s' to '%s' (Name, Desc, Creator, SpeedMult, Sound)",
-        removedCount, addedCount, donorName, targetName
+        "Removed %d, added %d objects from '%s'%s to '%s'",
+        removedCount, addedCount, donorName, variantText, targetName
     )
 end
 
@@ -185,6 +224,10 @@ function EmoteChanger.restore(targetName)
             data.EmoteInfo = data.EmoteInfo or {}
             if saved.speedMult ~= nil then data.EmoteInfo.SpeedMult = saved.speedMult end
             if saved.sound ~= nil then data.EmoteInfo.Sound = saved.sound end
+        end
+        if saved.header ~= nil then
+            data.UIInfo = data.UIInfo or {}
+            data.UIInfo.Header = saved.header
         end
     end
 
