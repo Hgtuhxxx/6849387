@@ -15,7 +15,7 @@ local Window = Fluent:CreateWindow({
     Tags = {
         { Text = " Evade Overhaul ", Color = Color3.fromRGB(211, 15, 40) },
     },
-    Version = "Version 3.5 Beta",
+    Version = "Version 3.6 Beta",
     Size = UDim2.fromOffset(580, 460),
     Theme = "Blood Red",
     Search = true,
@@ -695,6 +695,98 @@ function stopBotTracers()
     botTracerElements = {}
 end
 
+Tabs.Main:AddSection("Highlight ESP", "solar/magic-stick-bold")
+
+local HighlightBots
+do
+    local ok, result = pcall(loadOnlineModule, "HighlightBots.lua")
+    HighlightBots = ok and result or nil
+    if not ok then
+        warn("[Main] Failed to load HighlightBots.lua:", result)
+        Fluent:Notify({
+            Title = "Main",
+            Content = "Failed to load HighlightBots.lua",
+            Duration = 5
+        })
+    else
+        HighlightBots.init(Fluent, Options)
+    end
+end
+
+HighlightBotsToggle = Tabs.Main:AddToggle("HighlightBotsToggle", {
+    Title = "Highlight Bots",
+    Default = false,
+    Callback = function(state)
+        if HighlightBots then
+            if state then
+                HighlightBots.Start()
+            else
+                HighlightBots.Stop()
+            end
+        end
+    end
+})
+
+local HighlightPlayers
+do
+    local ok, result = pcall(loadOnlineModule, "HighlightPlayers.lua")
+    HighlightPlayers = ok and result or nil
+    if not ok then
+        warn("[Main] Failed to load HighlightPlayers.lua:", result)
+        Fluent:Notify({
+            Title = "Main",
+            Content = "Failed to load HighlightPlayers.lua",
+            Duration = 5
+        })
+    else
+        HighlightPlayers.init(Fluent, Options)
+    end
+end
+
+HighlightPlayersToggle = Tabs.Main:AddToggle("HighlightPlayersToggle", {
+    Title = "Highlight Players",
+    Default = false,
+    Callback = function(state)
+        if HighlightPlayers then
+            if state then
+                HighlightPlayers.Start()
+            else
+                HighlightPlayers.Stop()
+            end
+        end
+    end
+})
+
+local HighlightTickets
+do
+    local ok, result = pcall(loadOnlineModule, "HighlightTickets.lua")
+    HighlightTickets = ok and result or nil
+    if not ok then
+        warn("[Main] Failed to load HighlightTickets.lua:", result)
+        Fluent:Notify({
+            Title = "Main",
+            Content = "Failed to load HighlightTickets.lua",
+            Duration = 5
+        })
+    else
+        HighlightTickets.init(Fluent, Options)
+    end
+end
+
+HighlightTicketsToggle = Tabs.Main:AddToggle("HighlightTicketsToggle", {
+    Title = "Highlight Tickets",
+    Default = false,
+    Callback = function(state)
+        if HighlightTickets then
+            if state then
+                HighlightTickets.Start()
+            else
+                HighlightTickets.Stop()
+            end
+        end
+    end
+})
+
 tracerSection = Tabs.Main:AddSection("Tracer ESP", "solar/routing-bold")
 
 
@@ -725,7 +817,6 @@ TracerBotToggle:OnChanged(function(value)
     end
 end)
 
--- ===== Ticket Tracer (orange) =====
 local TicketTracer = {}
 TicketTracer.__index = TicketTracer
 
@@ -3755,6 +3846,33 @@ local DonorEmoteDropdown = VisualTab:AddDropdown("DonorEmoteDropdown", {
     Searchable = true,
 })
 
+local VariantDropdown = VisualTab:AddDropdown("VariantDropdown", {
+    Title = "Animation Variant",
+    Values = {},
+    Multi = false,
+    Default = "",
+    Searchable = true,
+})
+
+DonorEmoteDropdown:OnChanged(function(value)
+    if not value or value == "" then
+        pcall(function() VariantDropdown:SetValues({}) VariantDropdown:SetValue("") end)
+        return
+    end
+    
+    if EmoteChanger and EmoteChanger.getSelectionVariants then
+        local variants = EmoteChanger.getSelectionVariants(value)
+        pcall(function()
+            VariantDropdown:SetValues(variants)
+            if #variants > 0 then
+                VariantDropdown:SetValue(variants[1])
+            else
+                VariantDropdown:SetValue("")
+            end
+        end)
+    end
+end)
+
 VisualTab:AddButton({
     Title = "Load Emotes",
     Description = "Scan and load all emotes",
@@ -3787,10 +3905,11 @@ VisualTab:AddButton({
 
 VisualTab:AddButton({
     Title = "Replace Emote Content",
-    Description = "Delete all target content and paste all donor content",
+    Description = "Replace target with donor",
     Callback = function()
         local target = TargetEmoteDropdown.Value
         local donor = DonorEmoteDropdown.Value
+        local variant = VariantDropdown.Value
 
         if not target or target == "" then
             Fluent:Notify({ Title = "Visual", Content = "No target selected", Duration = 3 })
@@ -3805,7 +3924,12 @@ VisualTab:AddButton({
             return
         end
 
-        local ok, msg = EmoteChanger.replace(target, donor)
+        if not EmoteChanger then
+            Fluent:Notify({ Title = "Visual", Content = "EmoteChanger module not loaded", Duration = 4 })
+            return
+        end
+
+        local ok, msg = EmoteChanger.replace(target, donor, variant)
         Fluent:Notify({ Title = "Visual", Content = msg, Duration = 4 })
     end
 })
@@ -3817,6 +3941,11 @@ VisualTab:AddButton({
         local target = TargetEmoteDropdown.Value
         if not target or target == "" then
             Fluent:Notify({ Title = "Visual", Content = "No target selected", Duration = 3 })
+            return
+        end
+
+        if not EmoteChanger then
+            Fluent:Notify({ Title = "Visual", Content = "EmoteChanger module not loaded", Duration = 4 })
             return
         end
 
