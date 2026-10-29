@@ -28,9 +28,12 @@ local function isPlayerDowned(player)
             end
             
             if CharacterService then
-                local char = CharacterService:GetCharacterFromTag(model:GetAttribute("Tag"))
-                if char and char.State then
-                    return char.State.State == "Downed"
+                local tag = model:GetAttribute("Tag")
+                if tag then
+                    local char = CharacterService:GetCharacterFromTag(tag)
+                    if char and char.State and char.State.State == "Downed" then
+                        return true
+                    end
                 end
             end
         end
@@ -40,9 +43,9 @@ local function isPlayerDowned(player)
 end
 
 local function getPlayerModel(player)
-    local playersFolder = workspace:FindFirstChild("Players")
-    if playersFolder then
-        return playersFolder:FindFirstChild(player.Name)
+    local rigsFolder = workspace:FindFirstChild("Rigs")
+    if rigsFolder then
+        return rigsFolder:FindFirstChild(player.Name)
     end
     return nil
 end
