@@ -13,7 +13,14 @@ local originalTransparencies = {}
 
 local function isNextbotModel(model)
     if not model or not model:IsA("Model") then return false end
-    return model:GetAttribute("Team") == "Nextbot"
+    
+    local playersFolder = workspace:FindFirstChild("Players")
+    if not playersFolder then return false end
+    
+    local playerModel = playersFolder:FindFirstChild(model.Name)
+    if not playerModel then return false end
+    
+    return playerModel:GetAttribute("Team") == "Nextbot"
 end
 
 local function isHitboxPart(part)
@@ -127,9 +134,9 @@ end
 local function findAllBots()
     local bots = {}
     
-    local playersFolder = workspace:FindFirstChild("Players")
-    if playersFolder then
-        for _, model in ipairs(playersFolder:GetChildren()) do
+    local rigsFolder = workspace:FindFirstChild("Rigs")
+    if rigsFolder then
+        for _, model in ipairs(rigsFolder:GetChildren()) do
             if model:IsA("Model") and isNextbotModel(model) then
                 table.insert(bots, model)
             end
