@@ -10,36 +10,38 @@ local isEnabled = false
 local Fluent = nil
 local Options = nil
 
--- Функция проверки: лежит ли игрок (по здоровью)
-local function isPlayerDowned(model)
-    if not model then return false end
+local function isPlayerDowned(player)
+    local playersFolder = workspace:FindFirstChild("Players")
+    if not playersFolder then return false end
     
-    local humanoid = model:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
+    local playerModel = playersFolder:FindFirstChild(player.Name)
+    if not playerModel then return false end
     
-    -- Если здоровье 0 или меньше — значит Downed
-    return humanoid.Health <= 0
+    local humanoid = playerModel:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        return humanoid.Health <= 0
+    end
+    
+    return false
 end
 
--- Функция получения модели игрока из workspace.Rigs
-local function getPlayerModel(player)
+-- ★ Модель для подсветки берем из workspace.Rigs
+local function getRigsModel(player)
     local rigsFolder = workspace:FindFirstChild("Rigs")
-    if rigsFolder then
-        return rigsFolder:FindFirstChild(player.Name)
-    end
-    return nil
+    if not rigsFolder then return nil end
+    
+    return rigsFolder:FindFirstChild(player.Name)
 end
 
 local function updatePlayerHighlight(player)
     if not player or player == LocalPlayer then return end
     if not isEnabled then return end
     
-    local model = getPlayerModel(player)
-    if not model then return end
+    local rigsModel = getRigsModel(player)
+    if not rigsModel then return end
     
-    local isDowned = isPlayerDowned(model)
+    local isDowned = isPlayerDowned(player)
     
-    -- Если подсветка уже есть, обновляем цвет
     if playerHighlights[player] then
         local highlight = playerHighlights[player]
         if highlight and highlight.Parent then
@@ -54,12 +56,10 @@ local function updatePlayerHighlight(player)
     -- Создаем новую подсветку в модели из Rigs
     local highlight = Instance.new("Highlight")
     highlight.Name = "DraconicHighlight_" .. player.Name
-    highlight.Parent = model
+    highlight.Parent = rigsModel
     highlight.FillTransparency = 0.3
     highlight.OutlineTransparency = 0
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    
-    -- Цвет: Желтый (если Downed) или Белый (если живой)
     highlight.FillColor = isDowned and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(255, 255, 255)
     highlight.OutlineColor = isDowned and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(200, 200, 200)
     
