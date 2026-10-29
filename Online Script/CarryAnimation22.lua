@@ -78,6 +78,7 @@ local function saveOriginalCarry(name)
         desc = nil,
         creator = nil,
         header = nil,
+        sound = nil,
     }
 
     for _, child in ipairs(entry.module:GetChildren()) do
@@ -93,6 +94,9 @@ local function saveOriginalCarry(name)
         end
         if data.UIInfo then
             saved.header = data.UIInfo.Header
+        end
+        if data.EmoteInfo then
+            saved.sound = data.EmoteInfo.Sound
         end
     end
 
@@ -148,10 +152,16 @@ function CarryAnimation.replace(targetName, donorName)
             targetData.UIInfo = targetData.UIInfo or {}
             targetData.UIInfo.Header = donorData.UIInfo.Header
         end
+        
+        -- ★ Копируем Sound
+        if donorData.EmoteInfo and donorData.EmoteInfo.Sound then
+            targetData.EmoteInfo = targetData.EmoteInfo or {}
+            targetData.EmoteInfo.Sound = donorData.EmoteInfo.Sound
+        end
     end
 
     return true, string.format(
-        "Removed %d, added %d objects from '%s' to '%s' (Name, Desc, Creator, Header)",
+        "Removed %d, added %d objects from '%s' to '%s' (Name, Desc, Creator, Header, Sound)",
         removedCount, addedCount, donorName, targetName
     )
 end
@@ -187,6 +197,11 @@ function CarryAnimation.restore(targetName)
         if saved.header ~= nil then
             data.UIInfo = data.UIInfo or {}
             data.UIInfo.Header = saved.header
+        end
+        
+        if saved.sound ~= nil then
+            data.EmoteInfo = data.EmoteInfo or {}
+            data.EmoteInfo.Sound = saved.sound
         end
     end
 
