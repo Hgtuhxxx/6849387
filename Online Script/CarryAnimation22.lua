@@ -95,8 +95,8 @@ local function saveOriginalCarry(name)
         if data.UIInfo then
             saved.header = data.UIInfo.Header
         end
-        if data.EmoteInfo then
-            saved.sound = data.EmoteInfo.Sound
+        if data.CarryInfo then
+            saved.sound = data.CarryInfo.Sound
         end
     end
 
@@ -153,10 +153,9 @@ function CarryAnimation.replace(targetName, donorName)
             targetData.UIInfo.Header = donorData.UIInfo.Header
         end
         
-        -- ★ Копируем Sound
-        if donorData.EmoteInfo and donorData.EmoteInfo.Sound then
-            targetData.EmoteInfo = targetData.EmoteInfo or {}
-            targetData.EmoteInfo.Sound = donorData.EmoteInfo.Sound
+        if donorData.CarryInfo and donorData.CarryInfo.Sound then
+            targetData.CarryInfo = targetData.CarryInfo or {}
+            targetData.CarryInfo.Sound = donorData.CarryInfo.Sound
         end
     end
 
@@ -200,8 +199,8 @@ function CarryAnimation.restore(targetName)
         end
         
         if saved.sound ~= nil then
-            data.EmoteInfo = data.EmoteInfo or {}
-            data.EmoteInfo.Sound = saved.sound
+            data.CarryInfo = data.CarryInfo or {}
+            data.CarryInfo.Sound = saved.sound
         end
     end
 
