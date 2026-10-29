@@ -2,7 +2,6 @@ local HighlightPlayers = {}
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local playerHighlights = {}
@@ -11,37 +10,18 @@ local isEnabled = false
 local Fluent = nil
 local Options = nil
 
-local CharacterService
-pcall(function()
-    CharacterService = require(ReplicatedStorage.Services.Asset.CharacterService)
-end)
-
-local function isPlayerDowned(player)
-    if not player or player == LocalPlayer then return false end
+-- Функция проверки: лежит ли игрок (по здоровью)
+local function isPlayerDowned(model)
+    if not model then return false end
     
-    local playersFolder = workspace:FindFirstChild("Players")
-    if playersFolder then
-        local model = playersFolder:FindFirstChild(player.Name)
-        if model then
-            if model:GetAttribute("Downed") then
-                return true
-            end
-            
-            if CharacterService then
-                local tag = model:GetAttribute("Tag")
-                if tag then
-                    local char = CharacterService:GetCharacterFromTag(tag)
-                    if char and char.State and char.State.State == "Downed" then
-                        return true
-                    end
-                end
-            end
-        end
-    end
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return false end
     
-    return false
+    -- Если здоровье 0 или меньше — значит Downed
+    return humanoid.Health <= 0
 end
 
+-- Функция получения модели игрока из workspace.Rigs
 local function getPlayerModel(player)
     local rigsFolder = workspace:FindFirstChild("Rigs")
     if rigsFolder then
@@ -57,8 +37,9 @@ local function updatePlayerHighlight(player)
     local model = getPlayerModel(player)
     if not model then return end
     
-    local isDowned = isPlayerDowned(player)
+    local isDowned = isPlayerDowned(model)
     
+    -- Если подсветка уже есть, обновляем цвет
     if playerHighlights[player] then
         local highlight = playerHighlights[player]
         if highlight and highlight.Parent then
@@ -70,12 +51,15 @@ local function updatePlayerHighlight(player)
         end
     end
     
+    -- Создаем новую подсветку в модели из Rigs
     local highlight = Instance.new("Highlight")
-    highlight.Name = "PlayerHighlight_" .. player.Name
+    highlight.Name = "DraconicHighlight_" .. player.Name
     highlight.Parent = model
     highlight.FillTransparency = 0.3
     highlight.OutlineTransparency = 0
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    
+    -- Цвет: Желтый (если Downed) или Белый (если живой)
     highlight.FillColor = isDowned and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(255, 255, 255)
     highlight.OutlineColor = isDowned and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(200, 200, 200)
     
@@ -113,6 +97,7 @@ local function updateAllHighlights()
         end
     end
     
+    -- Удаляем подсветку, если игрок вышел
     for player in pairs(playerHighlights) do
         if not currentPlayers[player] then
             removePlayerHighlight(player)
