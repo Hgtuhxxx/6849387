@@ -78,6 +78,7 @@ local function saveOriginalCosmetic(name)
         desc = nil,
         creator = nil,
         icon = nil,
+        header = nil,
     }
 
     for _, child in ipairs(entry.module:GetChildren()) do
@@ -91,6 +92,9 @@ local function saveOriginalCosmetic(name)
             saved.desc = data.AppearanceInfo.Desc
             saved.creator = data.AppearanceInfo.Creator
             saved.icon = data.AppearanceInfo.Icon
+        end
+        if data.UIInfo then
+            saved.header = data.UIInfo.Header
         end
     end
 
@@ -144,10 +148,16 @@ function Cosmetic.replace(targetName, donorName)
                 targetData.AppearanceInfo.Icon = donorData.AppearanceInfo.Icon
             end
         end
+        
+        -- ★ Копируем Header
+        if donorData.UIInfo and donorData.UIInfo.Header then
+            targetData.UIInfo = targetData.UIInfo or {}
+            targetData.UIInfo.Header = donorData.UIInfo.Header
+        end
     end
 
     return true, string.format(
-        "Removed %d, added %d objects from '%s' to '%s' (Name, Desc, Creator, Icon)",
+        "Removed %d, added %d objects from '%s' to '%s' (Name, Desc, Creator, Icon, Header)",
         removedCount, addedCount, donorName, targetName
     )
 end
@@ -180,6 +190,11 @@ function Cosmetic.restore(targetName)
         if saved.desc ~= nil then data.AppearanceInfo.Desc = saved.desc end
         if saved.creator ~= nil then data.AppearanceInfo.Creator = saved.creator end
         if saved.icon ~= nil then data.AppearanceInfo.Icon = saved.icon end
+        
+        if saved.header ~= nil then
+            data.UIInfo = data.UIInfo or {}
+            data.UIInfo.Header = saved.header
+        end
     end
 
     return true, string.format("Restored %d objects + properties for '%s'", restored, targetName)
