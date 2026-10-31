@@ -54,7 +54,6 @@ local function CreateTimerGUI()
     BorderOutline.Color = Color3.fromRGB(139, 0, 0)
     BorderOutline.Transparency = 0.1
 
-    -- ★ Фон с прозрачностью (0.7) — как во 2-м коде
     local BackgroundFrame = Instance.new("Frame")
     BackgroundFrame.Name = "BackgroundFrame"
     BackgroundFrame.Parent = TimerDisplay
@@ -87,7 +86,6 @@ local function CreateTimerGUI()
         end
     end)
 
-    -- ★ StatusText (как во 2-м коде)
     local StatusText = Instance.new("TextLabel")
     StatusText.Name = "StatusText"
     StatusText.Parent = TimerDisplay
@@ -118,7 +116,6 @@ local function CreateTimerGUI()
     StatusBorder.Color = Color3.fromRGB(255, 255, 255)
     StatusBorder.Transparency = 0.7
 
-    -- ★ CountdownText (как во 2-м коде)
     local CountdownText = Instance.new("TextLabel")
     CountdownText.Name = "CountdownText"
     CountdownText.Parent = TimerDisplay
@@ -149,7 +146,6 @@ local function CreateTimerGUI()
     CountdownBorder.Color = Color3.fromRGB(255, 255, 255)
     CountdownBorder.Transparency = 0.7
 
-    -- ★ DRAG (перетаскивание) — как во 2-м коде
     local dragging = false
     local dragInput = nil
     local dragStart = nil
