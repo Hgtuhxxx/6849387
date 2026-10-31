@@ -7,7 +7,25 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local ServerStateRegistryService = require(ReplicatedStorage.Services.Data.ServerStateRegistryService)
 
-local function CreateTimerGUI()
+local module = {}
+
+local timerGui = nil
+local timerLabel = nil
+local statusLabel = nil
+local updateConnection = nil
+local backgroundAnimation = nil
+
+local function formatTime(seconds)
+    if not seconds or type(seconds) ~= "number" then return "0:00" end
+    seconds = math.floor(seconds)
+    local minutes = math.floor(seconds / 60)
+    local remainingSeconds = seconds % 60
+    return string.format("%d:%02d", minutes, remainingSeconds)
+end
+
+local function createTimerGUI()
+    if timerGui then return end
+
     local oldGui = PlayerGui:FindFirstChild("MainInterface")
     if oldGui then oldGui:Destroy() end
 
@@ -78,11 +96,9 @@ local function CreateTimerGUI()
     BackgroundGradient.Rotation = 0
     BackgroundGradient.Parent = BackgroundFrame
 
-    local backgroundAnimation = RunService.RenderStepped:Connect(function(delta)
+    backgroundAnimation = RunService.RenderStepped:Connect(function(delta)
         if BackgroundGradient and BackgroundGradient.Parent then
             BackgroundGradient.Rotation = (BackgroundGradient.Rotation + 90 * delta) % 360
-        else
-            if backgroundAnimation then backgroundAnimation:Disconnect() end
         end
     end)
 
@@ -146,6 +162,7 @@ local function CreateTimerGUI()
     CountdownBorder.Color = Color3.fromRGB(255, 255, 255)
     CountdownBorder.Transparency = 0.7
 
+    -- Drag
     local dragging = false
     local dragInput = nil
     local dragStart = nil
@@ -191,46 +208,58 @@ local function CreateTimerGUI()
         end
     end)
 
-    return CountdownText, StatusText, MainInterface, TimerContainer, backgroundAnimation
-end
+    timerGui = MainInterface
+    timerLabel = CountdownText
+    statusLabel = StatusText
 
-local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
+    local function updateTimer()
+        local timeValue = ServerStateRegistryService:Get("Time") or 0
+        local roundStatus = ServerStateRegistryService:Get("RoundStatus")
 
-local function formatTime(seconds)
-    if not seconds or type(seconds) ~= "number" then return "0:00" end
-    seconds = math.floor(seconds)
-    local minutes = math.floor(seconds / 60)
-    local remainingSeconds = seconds % 60
-    return string.format("%d:%02d", minutes, remainingSeconds)
-end
+        timerLabel.Text = formatTime(timeValue)
 
-local function updateTimer()
-    local timeValue = ServerStateRegistryService:Get("Time")
-    local roundStatus = ServerStateRegistryService:Get("RoundStatus")
+        if timeValue <= 5 then
+            timerLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        else
+            timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
 
-    if not timeValue then timeValue = 0 end
-
-    TimerLabel.Text = formatTime(timeValue)
-
-    if timeValue <= 5 then
-        TimerLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    else
-        TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        if roundStatus == 2 then
+            statusLabel.Text = "ROUND ACTIVE"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            statusLabel.Text = "INTERMISSION"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        end
     end
 
-    if roundStatus == 2 then
-        StatusLabel.Text = "ROUND ACTIVE"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        StatusLabel.Text = "INTERMISSION"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-    end
+    updateConnection = RunService.Heartbeat:Connect(updateTimer)
+    updateTimer()
 end
 
-local updateConnection = RunService.Heartbeat:Connect(updateTimer)
-updateTimer()
+function module.Start()
+    createTimerGUI()
+end
 
-TimerContainer.Destroying:Connect(function()
-    if backgroundAnimation then backgroundAnimation:Disconnect() end
-    if updateConnection then updateConnection:Disconnect() end
-end)
+function module.Stop()
+    if updateConnection then
+        updateConnection:Disconnect()
+        updateConnection = nil
+    end
+    if backgroundAnimation then
+        backgroundAnimation:Disconnect()
+        backgroundAnimation = nil
+    end
+    if timerGui then
+        timerGui:Destroy()
+        timerGui = nil
+    end
+    timerLabel = nil
+    statusLabel = nil
+end
+
+function module.IsRunning()
+    return timerGui ~= nil
+end
+
+return module
