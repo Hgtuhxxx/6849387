@@ -1178,69 +1178,19 @@ AutoWhistleToggle:OnChanged(function(value)
     end
 end)
 
-local TimerDisplayToggle = Tabs.Main:AddToggle("TimerDisplayToggle", {
+local TimerModule = loadstring(game:HttpGet('https://raw.githubusercontent.com/Hgtuhxxx/6849387/refs/heads/main/Online%20Script/TimerGUI.lua'))()
+
+TimerDisplayToggle = Tabs.Main:AddToggle("TimerDisplayToggle", {
     Title = "Show Timer",
-    Default = false
-})
-
-local timerDisplayLoop = nil
-
-TimerDisplayToggle:OnChanged(function(state)
-    if state then
-        if timerDisplayLoop then return end
-
-        timerDisplayLoop = RunService.RenderStepped:Connect(function()
-            local player = game:GetService("Players").LocalPlayer
-            local pg = player.PlayerGui
-
-
-            local gameGui = pg:FindFirstChild("Game")
-            local hud = gameGui and gameGui:FindFirstChild("HUD")
-            local overlay = hud and hud:FindFirstChild("Overlay")
-            local roundOverlay = overlay and overlay:FindFirstChild("RoundOverlay")
-            local roundTimer = roundOverlay and roundOverlay:FindFirstChild("RoundTimer")
-
-            if timer then
-                timer.Visible = true
-            end
-
-            local main = pg:FindFirstChild("MainInterface")
-            if main then
-                local container = main:FindFirstChild("TimerContainer")
-                if container then
-                    container.Visible = true
-                end
-            end
-        end)
-    else
-        if timerDisplayLoop then
-            timerDisplayLoop:Disconnect()
-            timerDisplayLoop = nil
-        end
-
-        local player = game:GetService("Players").LocalPlayer
-        local pg = player.PlayerGui
-
-        local gameGui = pg:FindFirstChild("Game")
-        local hud = gameGui and gameGui:FindFirstChild("HUD")
-        local overlay = hud and hud:FindFirstChild("Overlay")
-        local roundOverlay = overlay and overlay:FindFirstChild("RoundOverlay")
-        local roundTimer = roundOverlay and roundOverlay:FindFirstChild("RoundTimer")
-
-        if timer then
-            timer.Visible = false
-        end
-
-        local main = pg:FindFirstChild("MainInterface")
-        if main then
-            local container = main:FindFirstChild("TimerContainer")
-            if container then
-                container.Visible = false
-            end
+    Default = false,
+    Callback = function(state)
+        if state then
+            TimerModule.Start()
+        else
+            TimerModule.Stop()
         end
     end
-end)
-
+})
 
 local billboardSection = Tabs.Main:AddSection("Player Modification", "solar/user-bold")
 
@@ -4635,7 +4585,6 @@ InfoTab:AddButton({
 
 Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Hgtuhxxx/6849387/refs/heads/main/Online%20Script/TimerGUI.lua'))()
 
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(2) 
